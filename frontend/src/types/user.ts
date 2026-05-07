@@ -9,3 +9,11 @@ export interface UserProfile {
     friendIds: string[];
 }
 
+
+export interface ProfileSQL {
+    id: string;
+    username: string;
+    elo?: string;
+    country?: string;
+    avatar_url?: string;
+}

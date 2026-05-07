@@ -1,6 +1,8 @@
 import type { Board, Ship } from "./board";
 
-export type GamePhase = 'AUTH' | 'LOBBY' | 'PLACING' | 'BATTLE' | 'RESULT';
+export type GameMode = 'BOT' | 'MULTIPLAYER';
+
+export type GamePhase = 'AUTH' | 'LOBBY' | 'PLACING' | 'BATTLE' | 'RESULT' | 'START_MENU';
 
 export interface MatchState {
     id: string;

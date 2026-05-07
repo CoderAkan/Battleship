@@ -23,7 +23,7 @@ export const Grid = ({
 
     return (
         <div
-            className="grid grid-cols-10 gap-0.5 bg-slate-800 p-1 border-2 border-slate-700 rounded-lg shadow-2xl w-fit mx-auto"
+            className="grid grid-cols-10 grid-rows-10 gap-0.5 bg-slate-800 p-1 border-2 border-slate-700 rounded-lg shadow-2xl w-full h-full aspect-square"
             onMouseLeave={() => onCellHover?.(-1, -1)}
         >
             {board.map((row, y) =>
@@ -40,14 +40,14 @@ export const Grid = ({
                             onClick={() => onCellClick?.(x, y)}
                             onMouseEnter={() => onCellHover?.(x, y)}
                             className={`
-                                w-[4.5vh] h-[4.5vh] md:w-[5.8vh] md:h-[5.8vh]
-                                flex items-center justify-center rounded-sm transition-all duration-200 
-                                cursor-pointer text-sm md:text-xl
+                                w-full h-full min-w-0 min-h-0
+                                flex items-center justify-center rounded-sm transition-all duration-200
+                                cursor-pointer
+                                text-[10px] sm:text-sm md:text-base lg:text-lg
                                 ${isHit ? 'bg-orange-500 animate-pulse' : ''}
                                 ${isMiss ? 'bg-slate-700' : ''}
                                 ${isSunk ? 'bg-red-700 border border-red-400' : ''}
                                 ${isShipVisible ? 'bg-blue-600 border border-blue-400' : ''}
-                                /* Apply dynamic ghostColor if it's a preview cell */
                                 ${isPreview ? ghostColor : ''}
                                 ${!isShipVisible && !isHit && !isMiss && !isSunk && !isPreview ? 'bg-slate-900 hover:bg-slate-700' : ''}
                             `}

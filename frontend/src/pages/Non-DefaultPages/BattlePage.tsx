@@ -5,25 +5,73 @@ import { TurnOverlay } from '../../components/TurnOverlay';
 import { translations } from '../../utils/translations';
 
 export const BattlePage = () => {
-    const { boards, turn, fireShot, switchTurn, phase, language, toggleLanguage } = useGameStore();
+    const { boards, turn, fireShot, switchTurn, phase, language, mode, resetGame, winner } = useGameStore();
     const t = translations[language];
 
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [isMissed, setIsMissed] = useState(false);
     const [statusMessage, setStatusMessage] = useState(t.commanderFire);
     const [flash, setFlash] = useState(false);
+    const [isBotThinking, setIsBotThinking] = useState(false);
 
     const enemy = turn === 'p1' ? 'p2' : 'p1';
     const enemyBoard = boards[enemy];
 
     useEffect(() => {
-        document.body.style.overflow = 'hidden';
-        document.body.style.overscrollBehavior = 'none';
-        return () => {
-            document.body.style.overflow = 'unset';
-            document.body.style.overscrollBehavior = 'auto';
-        };
-    }, []);
+        if (phase === 'BATTLE' && turn === 'p2' && mode === 'BOT' && !isTransitioning && !isMissed) {
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+            const triggerBot = async () => {
+                setIsBotThinking(true);
+                await new Promise(res => setTimeout(res, 600));
+
+                try {
+                    const response = await fetch('http://localhost:8000/bot/move', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            board: boards.p1.map(row => row.map(cell => {
+                                if (cell.status === 'hit' || cell.status === 'sunk') return 2;
+                                if (cell.status === 'miss') return 1;
+                                return 0;
+                            })),
+                            remaining_ships: [5, 4, 3, 3, 2]
+                        }),
+                        signal: controller.signal
+                    });
+
+                    if (!response.ok) throw new Error('API Error');
+
+                    const move = await response.json();
+                    clearTimeout(timeoutId);
+                    setIsBotThinking(false);
+                    handleCellClick(move.x, move.y);
+
+                } catch (error: any) {
+                    console.warn("Bot logic failed or timed out. Firing random shot.");
+                    clearTimeout(timeoutId);
+                    setIsBotThinking(false);
+
+                    const validMoves: { x: number, y: number }[] = [];
+                    boards.p1.forEach((row, y) => {
+                        row.forEach((cell, x) => {
+                            if (cell.status === 'empty' || cell.status === 'ship') {
+                                validMoves.push({ x, y });
+                            }
+                        });
+                    });
+
+                    if (validMoves.length > 0) {
+                        const randomChoice = validMoves[Math.floor(Math.random() * validMoves.length)];
+                        handleCellClick(randomChoice.x, randomChoice.y);
+                    }
+                }
+            };
+            triggerBot();
+        }
+    }, [turn, phase, mode, isTransitioning, isMissed, boards.p1]);
 
     useEffect(() => {
         setFlash(true);
@@ -43,10 +91,12 @@ export const BattlePage = () => {
         } else {
             setIsMissed(true);
             setStatusMessage(t.missed);
+
+            if (mode === 'BOT') {
+                setTimeout(() => handleTransitionComplete(), 1000);
+            }
         }
     };
-
-    const handleContinue = () => setIsTransitioning(true);
 
     const handleTransitionComplete = () => {
         switchTurn();
@@ -55,12 +105,22 @@ export const BattlePage = () => {
         setIsTransitioning(false);
     };
 
+    const handleContinue = () => {
+        setIsTransitioning(true);
+    };
+
     const resetLogic = () => {
-        localStorage.clear();
+        resetGame();
         window.location.reload();
     };
 
-    if (isTransitioning) {
+    const getWinnerSubtitle = () => {
+        if (winner === 'p1') return t.player1Wins;
+        if (winner === 'p2') return mode === 'BOT' ? t.botWins : t.player2Wins;
+        return '';
+    };
+
+    if (isTransitioning && mode === 'MULTIPLAYER') {
         return (
             <TurnOverlay
                 nextPlayer={turn === 'p1' ? (language === 'en' ? 'Player 2' : 'Игрок 2') : (language === 'en' ? 'Player 1' : 'Игрок 1')}
@@ -70,101 +130,131 @@ export const BattlePage = () => {
     }
 
     return (
-        <div className="fixed inset-0 w-full h-full bg-slate-950 text-white overflow-y-auto lg:overflow-hidden select-none z-50 no-bounce">
-
-            <div className="absolute top-4 right-4 z-[110]">
-                <button
-                    onClick={toggleLanguage}
-                    className="px-3 py-1 border border-slate-700 rounded hover:bg-slate-800 transition-colors text-xs font-bold flex items-center gap-x-2 text-white bg-slate-900/80 backdrop-blur-md"
-                >
-                    <span>{language === 'ru' ? '🇷🇺' : '🇬🇧'}</span>
-                    <span>{language === 'ru' ? 'RU' : 'EN'}</span>
-                </button>
-            </div>
-
+        <div className="w-full min-h-full bg-slate-950 text-white select-none flex flex-col">
             {phase !== 'RESULT' ? (
-                <div className="min-h-full lg:h-full w-full flex flex-col items-center p-4">
-                    <header className="mb-4 text-center shrink-0 pt-10 lg:pt-2">
-                        <h1 className="text-xl font-black italic text-blue-500 uppercase tracking-tighter">
-                            {language === 'en' ? `Player ${turn === 'p1' ? '1' : '2'}'s Turn` : `Ход Игрока ${turn === 'p1' ? '1' : '2'}`}
+                <>
+                    <header className="shrink-0 px-3 py-2 sm:p-4 text-center border-b border-slate-800">
+                        <h1 className="text-xs sm:text-base md:text-xl font-black text-blue-500 uppercase tracking-tighter mb-1.5 sm:mb-2">
+                            {mode === 'BOT' && turn === 'p2'
+                                ? (language === 'en' ? "AI BOT'S TURN" : "ХОД ИИ БОТА")
+                                : (language === 'en' ? `Player ${turn === 'p1' ? '1' : '2'}'s Turn` : `Ход Игрока ${turn === 'p1' ? '1' : '2'}`)}
                         </h1>
-
-                        <div className={`mt-2 mx-auto h-12 flex items-center justify-center max-w-xs px-4 py-2 rounded border-2 transition-all duration-300 ${isMissed ? 'border-red-900 bg-red-950/30' : 'border-blue-900 bg-blue-950/30'} ${flash ? 'scale-105 brightness-150' : 'scale-100'}`}>
-                            <p className={`font-mono font-bold text-[10px] sm:text-xs uppercase tracking-widest ${statusMessage === t.sunk ? 'text-orange-400' : isMissed ? 'text-red-500' : 'text-blue-400'}`}>
+                        <div className={`min-h-9 sm:min-h-12 flex items-center justify-center px-3 sm:px-6 py-1.5 rounded border-2 transition-all ${isMissed ? 'border-red-900 bg-red-950/30' : 'border-blue-900 bg-blue-950/30'} ${flash ? 'scale-105 brightness-125' : ''}`}>
+                            <p className="font-mono font-bold text-[9px] sm:text-xs uppercase tracking-widest text-blue-400 text-center">
                                 {statusMessage}
                             </p>
                         </div>
                     </header>
 
-                    <div className="flex flex-col lg:flex-row gap-6 lg:gap-12 items-center justify-center flex-1 w-full min-h-0 py-4">
-                        <div className="flex flex-col items-center shrink-0">
-                            <h2 className="mb-2 text-red-500 text-xs font-bold uppercase tracking-[0.2em]">{t.enemyWaters}</h2>
-                            <div className="scale-90 sm:scale-100 lg:scale-95 xl:scale-100 transition-transform">
-                                <Grid board={enemyBoard} showShips={false} onCellClick={handleCellClick} />
+
+                    <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-12 items-center justify-center p-3 sm:p-4 lg:p-8">
+                        <div className="flex flex-col items-center w-full lg:w-auto lg:flex-1 lg:max-w-[50vh]">
+                            <h2 className="mb-1.5 sm:mb-2 text-red-500 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest">
+                                {t.enemyWaters}
+                            </h2>
+                            <div
+                                className="aspect-square w-full"
+                                style={{ maxWidth: 'min(100%, 60vh, 500px)' }}
+                            >
+                                <Grid
+                                    board={enemyBoard}
+                                    showShips={false}
+                                    onCellClick={(mode === 'MULTIPLAYER' || turn === 'p1') ? handleCellClick : undefined}
+                                />
                             </div>
                         </div>
-                        <div className="flex flex-col items-center shrink-0">
-                            <h2 className="mb-2 text-blue-400 text-xs font-bold uppercase tracking-[0.2em]">{t.yourFleet}</h2>
-                            <div className="scale-90 sm:scale-100 lg:scale-95 xl:scale-100 opacity-80 transition-transform">
-                                <Grid board={boards[turn]} showShips={true} />
+
+                        <div className="flex flex-col items-center w-full lg:w-auto lg:flex-1 lg:max-w-[50vh]">
+                            <h2 className="mb-1.5 sm:mb-2 text-blue-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest">
+                                {mode === 'BOT' && turn === 'p2' ? (language === 'en' ? 'ENEMY RADAR' : 'РАДАР ПРОТИВНИКА') : t.yourFleet}
+                            </h2>
+                            <div
+                                className="aspect-square w-full opacity-70 lg:opacity-100"
+                                style={{ maxWidth: 'min(100%, 60vh, 500px)' }}
+                            >
+                                <Grid
+                                    board={boards[turn]}
+                                    showShips={mode === 'BOT' && turn === 'p2' ? false : true}
+                                />
                             </div>
+
+                            {isBotThinking && (
+                                <div className="mt-3 sm:mt-4 flex flex-col items-center">
+                                    <p className="text-[9px] sm:text-[10px] font-mono text-blue-500 animate-pulse uppercase tracking-[0.3em]">
+                                        {language === 'en' ? 'AI ANALYZING...' : 'ИИ АНАЛИЗИРУЕТ...'}
+                                    </p>
+                                    <div className="mt-1.5 sm:mt-2 flex gap-1">
+                                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    <div className="h-20 flex items-center shrink-0">
-                        {isMissed && (
+                    {isMissed && mode === 'MULTIPLAYER' && (
+                        <div className="shrink-0 py-3 flex items-center justify-center px-4 border-t border-slate-800">
                             <button
                                 onClick={handleContinue}
-                                className="px-10 py-3 bg-white text-black font-black rounded-full hover:bg-blue-400 shadow-[0_0_30_rgba(59,130,246,0.5)] text-base uppercase transition-all transform active:scale-95 animate-bounce"
+                                className="px-6 sm:px-10 py-2.5 sm:py-4 bg-white text-black font-black rounded-full hover:bg-blue-400 transition-all shadow-lg text-[11px] sm:text-sm uppercase tracking-widest active:scale-95"
                             >
                                 {t.nextPlayer}
                             </button>
-                        )}
-                    </div>
-                </div>
+                        </div>
+                    )}
+                </>
             ) : (
-                <div className="min-h-fit lg:h-full w-full bg-slate-950 flex flex-col items-center justify-start lg:justify-between p-4 md:p-8 relative">
-
-                    <div className="text-center mt-12 md:mt-3 mb-4 shrink-0">
-                        <h2 className="text-2xl md:text-4xl lg:text-5xl font-black text-white tracking-tighter drop-shadow-[0_0_20px_rgba(59,130,246,0.6)] uppercase">
+                <div className="flex-1 flex flex-col items-center justify-start py-6 sm:py-10 px-3 sm:px-6 gap-6 sm:gap-8">
+                    <div className="text-center w-full max-w-3xl">
+                        <div className="mb-2 text-blue-500 text-[10px] sm:text-xs font-mono tracking-[0.5em] uppercase">
+                            {t.tacticalReport}
+                        </div>
+                        <h2 className="text-4xl sm:text-6xl md:text-8xl font-black text-white uppercase tracking-tighter mb-2 italic">
                             {t.victory}
                         </h2>
-                        <p className="text-xs md:text-md lg:text-lg font-bold text-blue-400 uppercase tracking-[0.3em] mt-2">
-                            {language === 'en'
-                                ? `${turn === 'p1' ? 'Player 1' : 'Player 2'} ${t.conquered}`
-                                : `${turn === 'p1' ? 'Игрок 1' : 'Игрок 2'} ${t.conquered}`}
+                        <p className="text-blue-500 font-mono text-sm sm:text-xl md:text-2xl font-bold tracking-[0.2em] text-center">
+                            {getWinnerSubtitle()}
                         </p>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-2 lg:gap-16 items-center justify-center w-full max-w-6xl mx-auto py-2">
+                    {winner && (
+                        <div className="w-full flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-10">
+                            <div className="flex flex-col items-center w-full lg:w-auto lg:flex-1 lg:max-w-[40vh]">
+                                <h3 className="mb-2 text-blue-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest">
+                                    {t.winnersFleet}
+                                </h3>
+                                <div
+                                    className="aspect-square w-full"
+                                    style={{ maxWidth: 'min(100%, 45vh, 360px)' }}
+                                >
+                                    <Grid board={boards[winner]} showShips={true} />
+                                </div>
+                            </div>
 
-                        <div className="flex flex-col items-center shrink-0">
-                            <h3 className="mb-[15px] leading-none text-blue-500 font-black uppercase tracking-widest text-[10px] md:text-xs">
-                                {language === 'en' ? "Player 1 Fleet" : "Флот Игрока 1"}
-                            </h3>
-                            <div className="scale-[0.7] sm:scale-75 md:scale-80 lg:scale-80 xl:scale-95 transition-transform origin-top -mb-[60px] sm:mb-0">
-                                <Grid board={boards.p1} showShips={true} />
+                            <div className="flex flex-col items-center w-full lg:w-auto lg:flex-1 lg:max-w-[40vh]">
+                                <h3 className="mb-2 text-red-500 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest">
+                                    {t.defeatedFleet}
+                                </h3>
+                                <div
+                                    className="aspect-square w-full"
+                                    style={{ maxWidth: 'min(100%, 45vh, 360px)' }}
+                                >
+                                    <Grid
+                                        board={boards[winner === 'p1' ? 'p2' : 'p1']}
+                                        showShips={true}
+                                    />
+                                </div>
                             </div>
                         </div>
+                    )}
 
-                        <div className="flex flex-col items-center shrink-0">
-                            <h3 className="mb-[15px] leading-none text-red-500 font-black uppercase tracking-widest text-[10px] md:text-xs">
-                                {language === 'en' ? "Player 2 Fleet" : "Флот Игрока 2"}
-                            </h3>
-                            <div className="scale-[0.7] sm:scale-75 md:scale-80 lg:scale-80 xl:scale-95 transition-transform origin-top -mb-[60px] sm:mb-0">
-                                <Grid board={boards.p2} showShips={true} />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <button
-                            onClick={resetLogic}
-                            className="px-7 py-2 md:px-10 lg:py-3 bg-white text-black hover:bg-blue-600 hover:text-white rounded-full font-black text-sm md:text-md lg:text-lg transition-all shadow-2xl active:scale-90"
-                        >
-                            {t.redeploy}
-                        </button>
-                    </div>
+                    <button
+                        onClick={resetLogic}
+                        className="px-10 sm:px-14 py-3 sm:py-5 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase rounded-xl transition-transform active:scale-95 shadow-[0_10px_40px_rgba(37,99,235,0.4)] text-xs sm:text-sm"
+                    >
+                        {t.redeploy}
+                    </button>
                 </div>
             )}
         </div>

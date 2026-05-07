@@ -24,7 +24,14 @@ export const translations = {
         commanderFire: "SELECT TARGET COORDINATES",
         missed: "SHOT MISSED. HAND OVER COMMAND.",
         sunk: "ENEMY SHIP SUNK!",
-        hit: "HIT!"
+        hit: "HIT!",
+        player1Wins: "PLAYER 1 DOMINATED",
+        player2Wins: "PLAYER 2 DOMINATED",
+        botWins: "AI BOT WON",
+        youWin: "YOU DOMINATED",
+        winnersFleet: "Winner's Fleet",
+        defeatedFleet: "Defeated Fleet",
+        tacticalReport: "Tactical Report"
     },
     ru: {
         title: "МОРСКОЙ БОЙ",
@@ -51,6 +58,13 @@ export const translations = {
         commanderFire: "ВЫБЕРИТЕ КООРДИНАТЫ ЦЕЛИ",
         missed: "ПРОМАХ. ПЕРЕДАЙТЕ КОМАНДОВАНИЕ.",
         sunk: "ВРАЖЕСКИЙ КОРАБЛЬ ПОТОПЛЕН!",
-        hit: "ПОПАДАНИЕ!"
+        hit: "ПОПАДАНИЕ!",
+        player1Wins: "ИГРОК 1 ПОБЕДИЛ",
+        player2Wins: "ИГРОК 2 ПОБЕДИЛ",
+        botWins: "ИИ БОТ ПОБЕДИЛ",
+        youWin: "ВЫ ПОБЕДИЛИ",
+        winnersFleet: "Флот победителя",
+        defeatedFleet: "Разбитый флот",
+        tacticalReport: "Тактический отчёт"
     }
 };

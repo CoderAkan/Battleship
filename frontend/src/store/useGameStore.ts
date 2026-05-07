@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Board, Ship } from '../types/board';
-import type { GamePhase } from '../types/game';
+import type { GameMode, GamePhase } from '../types/game';
 import { createEmptyBoard } from '../utils/boardHelpers';
 
 interface GameStore {
@@ -9,19 +9,26 @@ interface GameStore {
     boards: { p1: Board; p2: Board };
     ships: { p1: Ship[]; p2: Ship[] };
     language: 'en' | 'ru';
+    mode: GameMode;
+    winner: 'p1' | 'p2' | null;
+    setMode: (mode: GameMode) => void;
     toggleLanguage: () => void;
     setPhase: (phase: GamePhase) => void;
     placeShip: (player: 'p1' | 'p2', ship: Ship) => void;
     fireShot: (attacker: 'p1' | 'p2', x: number, y: number) => 'hit' | 'miss' | 'sunk';
     switchTurn: () => void;
+    resetGame: () => void;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
-    phase: 'PLACING',
+    phase: 'START_MENU',
     turn: 'p1',
     boards: { p1: createEmptyBoard(), p2: createEmptyBoard() },
     ships: { p1: [], p2: [] },
     language: 'en',
+    mode: 'BOT',
+    winner: null,
+    setMode: (mode) => set({ mode }),
 
     setPhase: (phase) => set({ phase }),
 
@@ -74,7 +81,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }));
 
         if (updatedShips.every(s => s.isSunk)) {
-            set({ phase: 'RESULT' });
+            set({ phase: 'RESULT', winner: attacker });
         }
 
         return finalStatus;
@@ -85,4 +92,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     toggleLanguage: () => set((state) => ({
         language: state.language === 'en' ? 'ru' : 'en'
     })),
+
+    resetGame: () => set({
+        phase: 'START_MENU',
+        turn: 'p1',
+        boards: { p1: createEmptyBoard(), p2: createEmptyBoard() },
+        ships: { p1: [], p2: [] },
+        winner: null,
+    }),
 }));

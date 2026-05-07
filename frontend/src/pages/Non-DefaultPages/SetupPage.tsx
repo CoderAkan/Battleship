@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import { Grid } from '../../components/Grid';
 import { canPlaceShip } from '../../utils/placementLogic';
@@ -8,7 +8,7 @@ import { translations } from '../../utils/translations';
 import { toast } from 'react-toastify';
 
 export const SetupPage = () => {
-    const { boards, turn, placeShip, setPhase, language, toggleLanguage } = useGameStore();
+    const { boards, turn, placeShip, setPhase, language, mode } = useGameStore();
 
     const [shipIndex, setShipIndex] = useState(0);
     const [orientation, setOrientation] = useState<'horizontal' | 'vertical'>('horizontal');
@@ -19,14 +19,71 @@ export const SetupPage = () => {
     const t = translations[language];
     const currentBoard = boards[turn];
 
-    useEffect(() => {
-        document.body.style.overflow = 'hidden';
-        document.body.style.overscrollBehavior = 'none';
-        return () => {
-            document.body.style.overflow = 'unset';
-            document.body.style.overscrollBehavior = 'auto';
-        };
-    }, []);
+    const autoPlaceBotShips = () => {
+        const placedCoords = new Set<string>();
+
+        SHIPS_TO_PLACE.forEach((shipConfig) => {
+            let placed = false;
+            let attempts = 0;
+
+            while (!placed && attempts < 200) {
+                const x = Math.floor(Math.random() * 10);
+                const y = Math.floor(Math.random() * 10);
+                const orient = Math.random() > 0.5 ? 'horizontal' : 'vertical';
+
+                const shipCoords: { x: number; y: number }[] = [];
+                for (let i = 0; i < shipConfig.size; i++) {
+                    shipCoords.push({
+                        x: orient === 'horizontal' ? x + i : x,
+                        y: orient === 'vertical' ? y + i : y,
+                    });
+                }
+
+                const fitsOnBoard = shipCoords.every(
+                    (coord) => coord.x >= 0 && coord.x < 10 && coord.y >= 0 && coord.y < 10
+                );
+
+                if (!fitsOnBoard) {
+                    attempts++;
+                    continue;
+                }
+
+                let canPlace = true;
+                for (const { x: shipX, y: shipY } of shipCoords) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const checkKey = `${shipX + dx},${shipY + dy}`;
+                            if (placedCoords.has(checkKey)) {
+                                canPlace = false;
+                                break;
+                            }
+                        }
+                        if (!canPlace) break;
+                    }
+                    if (!canPlace) break;
+                }
+
+                if (canPlace) {
+                    placeShip('p2', {
+                        id: Math.random().toString(36),
+                        type: shipConfig.type,
+                        size: shipConfig.size,
+                        orientation: orient,
+                        hits: 0,
+                        isSunk: false,
+                        coordinates: shipCoords,
+                    });
+
+                    shipCoords.forEach(({ x: sx, y: sy }) => {
+                        placedCoords.add(`${sx},${sy}`);
+                    });
+
+                    placed = true;
+                }
+                attempts++;
+            }
+        });
+    };
 
     const getPreviewCells = () => {
         if (!hoveredCell || !currentShip) return [];
@@ -85,10 +142,15 @@ export const SetupPage = () => {
 
             if (shipIndex === SHIPS_TO_PLACE.length - 1) {
                 if (turn === 'p1') {
-                    setIsTransitioning(true);
+                    if (mode === 'BOT') {
+                        autoPlaceBotShips();
+                        setPhase('BATTLE');
+                    } else {
+                        setIsTransitioning(true);
+                    }
                 } else {
-                    useGameStore.setState({ turn: 'p1' });
                     setPhase('BATTLE');
+                    useGameStore.setState({ turn: 'p1' });
                 }
             } else {
                 setShipIndex(prev => prev + 1);
@@ -108,62 +170,44 @@ export const SetupPage = () => {
     }
 
     if (!currentBoard || currentBoard.length === 0) {
-        return <div className="text-white">Loading Fleet Command...</div>;
+        return <div className="text-white text-center mt-20">Loading Fleet Command...</div>;
     }
 
     return (
-        <div className="fixed inset-0 w-full h-full bg-slate-950 text-white overflow-y-auto lg:overflow-hidden select-none z-50 no-bounce">
+        <div className="w-full min-h-full bg-slate-950 text-white select-none flex flex-col">
+            <div className="shrink-0 pt-2 pb-2 sm:pt-4 sm:pb-3 px-3 sm:px-4 text-center border-b border-slate-800">
+                <h2 className="text-sm sm:text-lg md:text-2xl font-black italic text-blue-500 uppercase tracking-tighter leading-tight">
+                    {language === 'en' ? `Player ${turn === 'p1' ? '1' : '2'}'s Setup` : `Настройка Игрока ${turn === 'p1' ? '1' : '2'}`}
+                </h2>
+                <h1 className="hidden sm:block text-xl sm:text-2xl font-black uppercase tracking-tight mb-1 sm:mb-2">{t.commander}</h1>
+                <p className="text-blue-400 font-bold uppercase text-[8px] sm:text-[10px] tracking-widest mt-1">
+                    {t.placing}: {currentShip?.type} ({currentShip?.size} {t.cells})
+                    <span className="ml-2 text-white/40">[{shipIndex + 1}/{SHIPS_TO_PLACE.length}]</span>
+                </p>
+            </div>
 
-            <div className="absolute top-4 right-4 z-[110]">
+            <div className="shrink-0 p-2 sm:p-3 flex justify-center">
                 <button
-                    onClick={toggleLanguage}
-                    className="px-3 py-1 border border-slate-700 rounded hover:bg-slate-800 transition-colors text-xs font-bold flex items-center gap-x-2 text-white bg-slate-900/80 backdrop-blur-md"
+                    onClick={() => setOrientation(orientation === 'horizontal' ? 'vertical' : 'horizontal')}
+                    className="px-5 py-2 sm:px-8 sm:py-3 bg-blue-600 hover:bg-blue-500 rounded-full font-black transition-all shadow-lg text-[11px] sm:text-sm active:scale-95 uppercase tracking-wider"
                 >
-                    <span>{language === 'ru' ? '🇷🇺' : '🇬🇧'}</span>
-                    <span>{language === 'ru' ? 'RU' : 'EN'}</span>
+                    {t.rotate} {orientation === 'horizontal' ? t.vertical : t.horizontal}
                 </button>
             </div>
 
-            <div className="min-h-full lg:h-full w-full flex flex-col items-center justify-start p-4 pt-12 lg:pt-4">
-                <header className="mb-2 text-center shrink-0">
-                    <h2 className="text-xl md:text-2xl font-black italic text-blue-500 uppercase tracking-tighter">
-                        {language === 'en'
-                            ? `Player ${turn === 'p1' ? '1' : '2'}'s Setup`
-                            : `Настройка Игрока ${turn === 'p1' ? '1' : '2'}`}
-                    </h2>
-                    <div className="h-1 w-16 bg-blue-500 mx-auto rounded-full mt-1 opacity-50" />
-                </header>
-
-                <div className="text-center mb-4 shrink-0">
-                    <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight mb-1">
-                        {t.commander}
-                    </h1>
-                    <p className="text-blue-400 font-bold uppercase text-[10px] sm:text-xs tracking-widest">
-                        {t.placing}: {currentShip?.type} ({currentShip?.size} {t.cells})
-                        <span className="ml-2 text-white/40">[{shipIndex + 1}/{SHIPS_TO_PLACE.length}]</span>
-                    </p>
-                </div>
-
-                <div className="shrink-0 mb-6">
-                    <button
-                        onClick={() => setOrientation(orientation === 'horizontal' ? 'vertical' : 'horizontal')}
-                        className="px-10 py-3 bg-blue-600 hover:bg-blue-500 rounded-full font-black transition-all shadow-lg text-sm flex items-center gap-2 active:scale-95"
-                    >
-                        <span>{t.rotate} {orientation === 'horizontal' ? t.vertical : t.horizontal}</span>
-                    </button>
-                </div>
-
-                <div className="flex-1 flex items-start lg:items-center justify-center w-full min-h-0 pb-8">
-                    <div className="scale-90 sm:scale-100 transition-transform shadow-2xl">
-                        <Grid
-                            board={currentBoard}
-                            onCellClick={handleCellClick}
-                            onCellHover={(x, y) => setHoveredCell(x === -1 ? null : { x, y })}
-                            previewCells={previewCells}
-                            isPreviewValid={isPreviewValid}
-                            showShips={true}
-                        />
-                    </div>
+            <div className="flex-1 flex items-center justify-center px-3 pb-4 sm:pb-6">
+                <div
+                    className="aspect-square w-full"
+                    style={{ maxWidth: 'min(100%, 70vh, 600px)' }}
+                >
+                    <Grid
+                        board={currentBoard}
+                        onCellClick={handleCellClick}
+                        onCellHover={(x, y) => setHoveredCell(x === -1 ? null : { x, y })}
+                        previewCells={previewCells}
+                        isPreviewValid={isPreviewValid}
+                        showShips={true}
+                    />
                 </div>
             </div>
         </div>
