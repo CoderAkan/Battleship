@@ -19,8 +19,10 @@ export const SetupPage = () => {
     const t = translations[language];
     const currentBoard = boards[turn];
 
-    // Body-overflow lock removed: it was preventing all mobile scroll, even when
-    // content overflowed the viewport. Page-level scroll is now allowed.
+    // Once shipIndex passes the end of the ship list, every ship has been
+    // placed but NOT YET committed. The user can still undo and re-place.
+    // The transition only happens when they click Confirm Fleet.
+    const allPlaced = shipIndex >= SHIPS_TO_PLACE.length;
 
     const autoPlaceBotShips = () => {
         const placedCoords = new Set<string>();
@@ -130,6 +132,8 @@ export const SetupPage = () => {
      * Forward-redo is intentionally NOT supported — the user requested back-only.
      *
      * Disabled when shipIndex === 0 (nothing to undo yet for this player).
+     * Available even after all ships are placed (shipIndex === SHIPS_TO_PLACE.length)
+     * so the user can fix the last placement before clicking Confirm Fleet.
      */
     const handleUndo = () => {
         if (shipIndex === 0) return;
@@ -141,8 +145,27 @@ export const SetupPage = () => {
 
     const canUndo = shipIndex > 0;
 
+    /**
+     * Commit the current placement and advance phases.
+     * Called only when the user explicitly clicks Confirm Fleet — never
+     * automatically — so undo is always possible up until this moment.
+     */
+    const handleConfirmFleet = () => {
+        if (turn === 'p1') {
+            if (mode === 'BOT') {
+                autoPlaceBotShips();
+                setPhase('BATTLE');
+            } else {
+                setIsTransitioning(true);
+            }
+        } else {
+            setPhase('BATTLE');
+            useGameStore.setState({ turn: 'p1' });
+        }
+    };
+
     const handleCellClick = (x: number, y: number) => {
-        if (shipIndex >= SHIPS_TO_PLACE.length) return;
+        if (allPlaced) return;
 
         const fitsOnBoard = orientation === 'horizontal'
             ? x + currentShip.size <= 10
@@ -165,22 +188,7 @@ export const SetupPage = () => {
             });
 
             setHoveredCell(null);
-
-            if (shipIndex === SHIPS_TO_PLACE.length - 1) {
-                if (turn === 'p1') {
-                    if (mode === 'BOT') {
-                        autoPlaceBotShips();
-                        setPhase('BATTLE');
-                    } else {
-                        setIsTransitioning(true);
-                    }
-                } else {
-                    setPhase('BATTLE');
-                    useGameStore.setState({ turn: 'p1' });
-                }
-            } else {
-                setShipIndex(prev => prev + 1);
-            }
+            setShipIndex(prev => prev + 1);
         } else {
             toast.error(t.invalidPlacement);
         }
@@ -200,13 +208,9 @@ export const SetupPage = () => {
     }
 
     return (
-        // min-h-full so the page can grow taller than the viewport when needed
-        // (e.g. tiny landscape phones); no fixed height = page-level scroll works.
         <div className="w-full min-h-full bg-slate-950 text-white select-none flex flex-col">
             {/* Header */}
             <div className="shrink-0 pt-2 pb-2 sm:pt-4 sm:pb-3 px-3 sm:px-4 text-center border-b border-slate-800 relative">
-                {/* Back button — top-left of the header. Returns to the
-                    start menu (BOT vs MULTIPLAYER selection) by resetting the game. */}
                 <button
                     onClick={handleBack}
                     className="absolute top-2 left-2 sm:top-3 sm:left-3 lg:top-4 lg:left-4 group flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 border border-slate-600 rounded hover:bg-slate-800 hover:border-slate-400 transition-colors text-[10px] sm:text-xs lg:text-sm font-bold uppercase tracking-wider"
@@ -220,29 +224,31 @@ export const SetupPage = () => {
                     {language === 'en' ? `Player ${turn === 'p1' ? '1' : '2'}'s Setup` : `Настройка Игрока ${turn === 'p1' ? '1' : '2'}`}
                 </h2>
                 <h1 className="hidden sm:block text-xl sm:text-2xl font-black uppercase tracking-tight mb-1 sm:mb-2">{t.commander}</h1>
-                <p className="text-blue-400 font-bold uppercase text-[8px] sm:text-[10px] tracking-widest mt-1">
-                    {t.placing}: {currentShip?.type} ({currentShip?.size} {t.cells})
-                    <span className="ml-2 text-white/40">[{shipIndex + 1}/{SHIPS_TO_PLACE.length}]</span>
-                </p>
+                {!allPlaced ? (
+                    <p className="text-blue-400 font-bold uppercase text-[8px] sm:text-[10px] tracking-widest mt-1">
+                        {t.placing}: {currentShip?.type} ({currentShip?.size} {t.cells})
+                        <span className="ml-2 text-white/40">[{shipIndex + 1}/{SHIPS_TO_PLACE.length}]</span>
+                    </p>
+                ) : (
+                    <p className="text-green-400 font-bold uppercase text-[8px] sm:text-[10px] tracking-widest mt-1">
+                        {language === 'en' ? 'All ships placed — confirm to begin' : 'Все корабли расставлены — подтвердите'}
+                    </p>
+                )}
             </div>
 
-            {/* Controls — Rotate + Undo, centered together */}
-            <div className="shrink-0 p-2 sm:p-3 flex justify-center items-center gap-2 sm:gap-3">
-                <button
-                    onClick={() => setOrientation(orientation === 'horizontal' ? 'vertical' : 'horizontal')}
-                    className="px-5 py-2 sm:px-8 sm:py-3 bg-blue-600 hover:bg-blue-500 rounded-full font-black transition-all shadow-lg text-[11px] sm:text-sm active:scale-95 uppercase tracking-wider"
-                >
-                    {t.rotate} {orientation === 'horizontal' ? t.vertical : t.horizontal}
-                </button>
-            </div>
+            {/* Controls — Rotate (only while placing) */}
+            {!allPlaced && (
+                <div className="shrink-0 p-2 sm:p-3 flex justify-center items-center gap-2 sm:gap-3">
+                    <button
+                        onClick={() => setOrientation(orientation === 'horizontal' ? 'vertical' : 'horizontal')}
+                        className="px-5 py-2 sm:px-8 sm:py-3 bg-blue-600 hover:bg-blue-500 rounded-full font-black transition-all shadow-lg text-[11px] sm:text-sm active:scale-95 uppercase tracking-wider"
+                    >
+                        {t.rotate} {orientation === 'horizontal' ? t.vertical : t.horizontal}
+                    </button>
+                </div>
+            )}
 
-            {/*
-              Grid container.
-              Grid.tsx now does w-full h-full aspect-square, so it fills this wrapper.
-              maxWidth uses min() to pick the smallest of: parent width, 70% viewport
-              height, or a hard cap of 600px — keeps the grid always square and fully
-              visible without overflow.
-            */}
+            {/* Grid + side undo */}
             <div className="flex-1 flex items-center justify-center px-3 pb-4 sm:pb-6">
                 <div
                     className="relative aspect-square w-full"
@@ -262,7 +268,7 @@ export const SetupPage = () => {
                     </button>
                     <Grid
                         board={currentBoard}
-                        onCellClick={handleCellClick}
+                        onCellClick={!allPlaced ? handleCellClick : undefined}
                         onCellHover={(x, y) => setHoveredCell(x === -1 ? null : { x, y })}
                         previewCells={previewCells}
                         isPreviewValid={isPreviewValid}
@@ -270,6 +276,18 @@ export const SetupPage = () => {
                     />
                 </div>
             </div>
+
+            {/* Confirm Fleet — only visible once all ships are placed */}
+            {allPlaced && (
+                <div className="shrink-0 p-4 sm:p-6 flex justify-center">
+                    <button
+                        onClick={handleConfirmFleet}
+                        className="px-12 py-4 sm:px-16 sm:py-5 bg-green-600 hover:bg-green-500 text-white font-black uppercase rounded-xl transition-all active:scale-95 shadow-[0_10px_40px_rgba(34,197,94,0.4)] text-sm sm:text-base tracking-wider"
+                    >
+                        {language === 'en' ? 'Confirm Fleet →' : 'Подтвердить флот →'}
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

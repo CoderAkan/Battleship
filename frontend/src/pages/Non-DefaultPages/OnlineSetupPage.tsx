@@ -20,6 +20,9 @@ import type { Board, Ship } from '../../types/board';
  *
  * Ship placement state is local to this component (board + ship list)
  * until submitted; only then does it land in the multiplayer store.
+ *
+ * Undo remains available right up until the user clicks Submit Fleet,
+ * so they can fix the last ship's placement before locking it in.
  */
 export const OnlineSetupPage = () => {
     const { language } = useGameStore();
@@ -42,6 +45,7 @@ export const OnlineSetupPage = () => {
 
     const currentShip = SHIPS_TO_PLACE[shipIndex];
     const allPlaced = shipIndex >= SHIPS_TO_PLACE.length;
+    const canUndo = ships.length > 0;
 
     // ─── preview ───
     const getPreviewCells = () => {
@@ -163,17 +167,24 @@ export const OnlineSetupPage = () => {
                         ✓ {t.opponentReady}
                     </p>
                 )}
-                {!allPlaced && (
+                {!allPlaced ? (
                     <p className="text-blue-400 font-bold uppercase text-[10px] sm:text-xs tracking-widest mt-2">
                         {t.placing}: {currentShip.type} ({currentShip.size} {t.cells})
                         <span className="ml-2 text-white/40">
                             [{shipIndex + 1}/{SHIPS_TO_PLACE.length}]
                         </span>
                     </p>
+                ) : (
+                    <p className="text-green-400 font-bold uppercase text-[10px] sm:text-xs tracking-widest mt-2">
+                        {language === 'en'
+                            ? 'All ships placed — submit when ready'
+                            : 'Все корабли расставлены — отправьте когда готовы'}
+                    </p>
                 )}
             </div>
 
-            {/* Controls row */}
+            {/* Controls row — rotate hidden when allPlaced (no more ships to rotate),
+                undo always available as long as there's at least one ship to undo */}
             <div className="shrink-0 p-2 sm:p-3 flex justify-center items-center gap-2 sm:gap-3">
                 {!allPlaced && (
                     <button
@@ -183,7 +194,7 @@ export const OnlineSetupPage = () => {
                         {t.rotate} {orientation === 'horizontal' ? t.vertical : t.horizontal}
                     </button>
                 )}
-                {ships.length > 0 && !allPlaced && (
+                {canUndo && (
                     <button
                         onClick={handleUndo}
                         className="px-4 py-2 sm:px-5 sm:py-3 bg-slate-700 hover:bg-slate-600 rounded-full font-black transition-all text-[11px] sm:text-sm active:scale-95 uppercase tracking-wider"
@@ -217,7 +228,7 @@ export const OnlineSetupPage = () => {
                         onClick={handleSubmit}
                         className="px-12 py-4 sm:px-16 sm:py-5 bg-green-600 hover:bg-green-500 text-white font-black uppercase rounded-xl transition-all active:scale-95 shadow-[0_10px_40px_rgba(34,197,94,0.4)] text-sm sm:text-base tracking-wider"
                     >
-                        Submit Fleet →
+                        {language === 'en' ? 'Submit Fleet →' : 'Отправить флот →'}
                     </button>
                 </div>
             )}
