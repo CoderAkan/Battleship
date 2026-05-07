@@ -16,7 +16,7 @@ class BotMoveRequest(BaseModel):
     board: List[List[int]]  # 0=empty, 1=miss, 2=hit
     remaining_ships: List[int]
 
-@app.post("/bot/move")
+@app.post("/api/bot/move")
 async def calculate_move(data: BotMoveRequest):
     try:
         heatmap = [[0 for _ in range(10)] for _ in range(10)]
