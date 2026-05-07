@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
 import { multiplayerService } from '../services/multiplayerService';
 import { createEmptyBoard } from '../utils/boardHelpers';
 import type { Board, Ship } from '../types/board';
