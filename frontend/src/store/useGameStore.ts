@@ -3,6 +3,8 @@ import type { Board, Ship } from '../types/board';
 import type { GameMode, GamePhase } from '../types/game';
 import { createEmptyBoard } from '../utils/boardHelpers';
 
+type BotDifficulty = 'easy' | 'medium' | 'hard';
+
 interface GameStore {
     phase: GamePhase;
     turn: 'p1' | 'p2';
@@ -11,13 +13,19 @@ interface GameStore {
     language: 'en' | 'ru';
     mode: GameMode;
     winner: 'p1' | 'p2' | null;
+    p1Shots: number;
+    p1Hits: number;
+    botDifficulty: BotDifficulty;
     setMode: (mode: GameMode) => void;
     toggleLanguage: () => void;
     setPhase: (phase: GamePhase) => void;
     placeShip: (player: 'p1' | 'p2', ship: Ship) => void;
+    removeLastShip: (player: 'p1' | 'p2') => void;
     fireShot: (attacker: 'p1' | 'p2', x: number, y: number) => 'hit' | 'miss' | 'sunk';
     switchTurn: () => void;
     resetGame: () => void;
+    returnToSetup: () => void;
+    setBotDifficulty: (difficulty: BotDifficulty) => void;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -27,7 +35,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     ships: { p1: [], p2: [] },
     language: 'en',
     mode: 'BOT',
+    p1Shots: 0,
+    p1Hits: 0,
     winner: null,
+    botDifficulty: 'easy',
     setMode: (mode) => set({ mode }),
 
     setPhase: (phase) => set({ phase }),
@@ -43,6 +54,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
         set((state) => ({
             boards: { ...state.boards, [player]: newBoard },
             ships: { ...state.ships, [player]: [...state.ships[player], ship] }
+        }));
+    },
+
+    removeLastShip: (player) => {
+        const playerShips = get().ships[player];
+        if (playerShips.length === 0) return;
+
+        const lastShip = playerShips[playerShips.length - 1];
+        const currentBoard = get().boards[player];
+        const newBoard = currentBoard.map(row => row.map(cell => ({ ...cell })));
+
+        lastShip.coordinates.forEach(({ x, y }) => {
+            newBoard[y][x] = { status: 'empty' };
+        });
+
+        set((state) => ({
+            boards: { ...state.boards, [player]: newBoard },
+            ships: { ...state.ships, [player]: playerShips.slice(0, -1) },
         }));
     },
 
@@ -75,9 +104,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
             return ship;
         });
 
+        const shotsDelta = attacker === 'p1' ? 1 : 0;
+        const hitsDelta = attacker === 'p1' && isHit ? 1 : 0;
+
         set((state) => ({
             boards: { ...state.boards, [target]: newBoard },
-            ships: { ...state.ships, [target]: updatedShips }
+            ships: { ...state.ships, [target]: updatedShips },
+            p1Shots: state.p1Shots + shotsDelta,
+            p1Hits: state.p1Hits + hitsDelta,
         }));
 
         if (updatedShips.every(s => s.isSunk)) {
@@ -99,5 +133,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
         boards: { p1: createEmptyBoard(), p2: createEmptyBoard() },
         ships: { p1: [], p2: [] },
         winner: null,
+        p1Shots: 0,
+        p1Hits: 0,
     }),
+    returnToSetup: () => {
+        set(() => ({
+            phase: 'PLACING',
+            turn: 'p1',
+            boards: { p1: createEmptyBoard(), p2: createEmptyBoard() },
+            ships: { p1: [], p2: [] },
+            winner: null,
+            p1Shots: 0,
+            p1Hits: 0,
+        }));
+    },
+    setBotDifficulty: (botDifficulty) => set({ botDifficulty }),
 }));

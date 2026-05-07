@@ -31,7 +31,15 @@ export const translations = {
         youWin: "YOU DOMINATED",
         winnersFleet: "Winner's Fleet",
         defeatedFleet: "Defeated Fleet",
-        tacticalReport: "Tactical Report"
+        tacticalReport: "Tactical Report",
+        back: 'Back',
+        undo: 'Undo',
+        vsComputer: "Vs Computer",
+        localPvP: "Local PvP",
+        easy: "Easy",
+        medium: "Medium",
+        hard: "Hard",
+        homePageHeading: "Let's Start!"
     },
     ru: {
         title: "МОРСКОЙ БОЙ",
@@ -42,7 +50,7 @@ export const translations = {
         vertical: "ВЕРТИКАЛЬНО",
         enemyWaters: "Вражеские воды",
         yourFleet: "Ваш флот",
-        nextPlayer: "Следующий игрок",
+        nextPlayer: "След. игрок",
         victory: "ПОБЕДА!",
         conquered: "покорил море!",
         redeploy: "НОВАЯ ИГРА",
@@ -65,6 +73,14 @@ export const translations = {
         youWin: "ВЫ ПОБЕДИЛИ",
         winnersFleet: "Флот победителя",
         defeatedFleet: "Разбитый флот",
-        tacticalReport: "Тактический отчёт"
+        tacticalReport: "Тактический отчёт",
+        back: 'Назад',
+        undo: 'Отменить',
+        vsComputer: "Против Компьютера",
+        localPvP: "Локальный бой",
+        easy: "Лёгкий",
+        medium: "Средний",
+        hard: "Сложный",
+        homePageHeading: "Давайте начнём!"
     }
 };

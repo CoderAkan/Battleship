@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 import { useGameStore } from '../../store/useGameStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { translations } from '../../utils/translations';
@@ -17,9 +17,12 @@ const Layout = () => {
         <div className="min-h-[100dvh] flex flex-col bg-slate-900 text-white">
             {!isBattleActive && (
                 <nav className="h-16 z-[100] flex-none p-4 bg-slate-800 border-b border-slate-700 flex items-center justify-between">
-                    <span className="font-black tracking-tighter text-xl uppercase italic text-blue-500">
+                    <Link
+                        to="/"
+                        className="font-black tracking-tighter text-xl uppercase italic text-blue-500 hover:text-blue-400 transition-colors"
+                    >
                         {t.title}
-                    </span>
+                    </Link>
 
                     <div className="flex items-center gap-4">
                         <button
@@ -31,9 +34,12 @@ const Layout = () => {
 
                         {user ? (
                             <div className="flex items-center gap-6">
-                                <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors">
+                                <Link
+                                    to="/profile"
+                                    className="text-xs font-bold text-slate-300 hover:text-blue-400 transition-colors"
+                                >
                                     {profile?.username}
-                                </span>
+                                </Link>
                                 <button
                                     onClick={signOut}
                                     className="text-[11px] text-slate-400 hover:text-white font-bold uppercase transition-colors"

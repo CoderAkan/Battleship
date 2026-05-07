@@ -8,7 +8,7 @@ import { translations } from '../../utils/translations';
 import { toast } from 'react-toastify';
 
 export const SetupPage = () => {
-    const { boards, turn, placeShip, setPhase, language, mode } = useGameStore();
+    const { boards, turn, placeShip, removeLastShip, setPhase, language, mode, resetGame } = useGameStore();
 
     const [shipIndex, setShipIndex] = useState(0);
     const [orientation, setOrientation] = useState<'horizontal' | 'vertical'>('horizontal');
@@ -18,6 +18,9 @@ export const SetupPage = () => {
     const currentShip = SHIPS_TO_PLACE[shipIndex];
     const t = translations[language];
     const currentBoard = boards[turn];
+
+    // Body-overflow lock removed: it was preventing all mobile scroll, even when
+    // content overflowed the viewport. Page-level scroll is now allowed.
 
     const autoPlaceBotShips = () => {
         const placedCoords = new Set<string>();
@@ -115,6 +118,29 @@ export const SetupPage = () => {
         setIsTransitioning(false);
     };
 
+    const handleBack = () => {
+        // resetGame() sets phase back to 'START_MENU' and clears all boards/ships,
+        // so the user lands on the BOT vs MULTIPLAYER selection screen with a
+        // clean slate.
+        resetGame();
+    };
+
+    /**
+     * Undo the most recent ship placement for the current player.
+     * Forward-redo is intentionally NOT supported — the user requested back-only.
+     *
+     * Disabled when shipIndex === 0 (nothing to undo yet for this player).
+     */
+    const handleUndo = () => {
+        if (shipIndex === 0) return;
+
+        removeLastShip(turn);
+        setShipIndex(prev => prev - 1);
+        setHoveredCell(null);
+    };
+
+    const canUndo = shipIndex > 0;
+
     const handleCellClick = (x: number, y: number) => {
         if (shipIndex >= SHIPS_TO_PLACE.length) return;
 
@@ -174,8 +200,22 @@ export const SetupPage = () => {
     }
 
     return (
+        // min-h-full so the page can grow taller than the viewport when needed
+        // (e.g. tiny landscape phones); no fixed height = page-level scroll works.
         <div className="w-full min-h-full bg-slate-950 text-white select-none flex flex-col">
-            <div className="shrink-0 pt-2 pb-2 sm:pt-4 sm:pb-3 px-3 sm:px-4 text-center border-b border-slate-800">
+            {/* Header */}
+            <div className="shrink-0 pt-2 pb-2 sm:pt-4 sm:pb-3 px-3 sm:px-4 text-center border-b border-slate-800 relative">
+                {/* Back button — top-left of the header. Returns to the
+                    start menu (BOT vs MULTIPLAYER selection) by resetting the game. */}
+                <button
+                    onClick={handleBack}
+                    className="absolute top-2 left-2 sm:top-3 sm:left-3 lg:top-4 lg:left-4 group flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 border border-slate-600 rounded hover:bg-slate-800 hover:border-slate-400 transition-colors text-[10px] sm:text-xs lg:text-sm font-bold uppercase tracking-wider"
+                    aria-label={t.back ?? (language === 'en' ? 'Back' : 'Назад')}
+                >
+                    <span className="leading-none transition-transform group-hover:-translate-x-0.5">←</span>
+                    <span>{t.back ?? (language === 'en' ? 'Back' : 'Назад')}</span>
+                </button>
+
                 <h2 className="text-sm sm:text-lg md:text-2xl font-black italic text-blue-500 uppercase tracking-tighter leading-tight">
                     {language === 'en' ? `Player ${turn === 'p1' ? '1' : '2'}'s Setup` : `Настройка Игрока ${turn === 'p1' ? '1' : '2'}`}
                 </h2>
@@ -186,7 +226,8 @@ export const SetupPage = () => {
                 </p>
             </div>
 
-            <div className="shrink-0 p-2 sm:p-3 flex justify-center">
+            {/* Controls — Rotate + Undo, centered together */}
+            <div className="shrink-0 p-2 sm:p-3 flex justify-center items-center gap-2 sm:gap-3">
                 <button
                     onClick={() => setOrientation(orientation === 'horizontal' ? 'vertical' : 'horizontal')}
                     className="px-5 py-2 sm:px-8 sm:py-3 bg-blue-600 hover:bg-blue-500 rounded-full font-black transition-all shadow-lg text-[11px] sm:text-sm active:scale-95 uppercase tracking-wider"
@@ -195,11 +236,30 @@ export const SetupPage = () => {
                 </button>
             </div>
 
+            {/*
+              Grid container.
+              Grid.tsx now does w-full h-full aspect-square, so it fills this wrapper.
+              maxWidth uses min() to pick the smallest of: parent width, 70% viewport
+              height, or a hard cap of 600px — keeps the grid always square and fully
+              visible without overflow.
+            */}
             <div className="flex-1 flex items-center justify-center px-3 pb-4 sm:pb-6">
                 <div
-                    className="aspect-square w-full"
-                    style={{ maxWidth: 'min(100%, 70vh, 600px)' }}
+                    className="relative aspect-square w-full"
+                    style={{ maxWidth: 'min(100%, 60vh, 540px)' }}
                 >
+                    <button
+                        onClick={handleUndo}
+                        disabled={!canUndo}
+                        className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[calc(100%+0.5rem)] sm:-translate-x-[calc(100%+1rem)] group flex items-center gap-1.5 px-3 py-2 sm:px-5 sm:py-3 rounded-full font-black transition-all shadow-lg text-[10px] sm:text-sm uppercase tracking-wider z-10 ${canUndo
+                            ? 'bg-slate-700 hover:bg-slate-600 text-white active:scale-95 cursor-pointer'
+                            : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-60'
+                            }`}
+                        aria-label={t.undo}
+                    >
+                        <span className={`leading-none ${canUndo ? 'transition-transform group-hover:-translate-x-0.5' : ''}`}>←</span>
+                        <span>{t.undo}</span>
+                    </button>
                     <Grid
                         board={currentBoard}
                         onCellClick={handleCellClick}
