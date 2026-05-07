@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGameStore } from '../store/useGameStore';
-import { translations } from '../utils/translations';
 import { toast } from 'react-toastify';
 
 interface AuthModalProps {
@@ -20,7 +19,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
     const { setUser, fetchProfile } = useAuthStore();
     const { language, toggleLanguage } = useGameStore();
-    const t = translations[language];
 
     if (!isOpen) return null;
 
