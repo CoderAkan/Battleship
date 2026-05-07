@@ -1,6 +1,8 @@
 fastapi
-uvicorn
+uvicorn[standard]
 supabase
 python-dotenv
 pydantic
 requests
+pyjwt[crypto]
+websockets

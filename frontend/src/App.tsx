@@ -5,23 +5,25 @@ import { supabase } from "./lib/supabase"
 import { useAuthStore } from "./store/useAuthStore"
 
 function App() {
-    const { setUser, fetchProfile } = useAuthStore()
+    const { setUser, fetchProfile, setAccessToken } = useAuthStore()
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
             const user = session?.user ?? null;
             setUser(user);
+            setAccessToken(session?.access_token ?? null);
             if (user) fetchProfile(user.id);
         });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             const user = session?.user ?? null;
             setUser(user);
+            setAccessToken(session?.access_token ?? null);
             if (user) fetchProfile(user.id);
         });
 
         return () => subscription.unsubscribe();
-    }, [setUser, fetchProfile]);
+    }, [setUser, fetchProfile, setAccessToken]);
 
     return (
         <RouterProvider router={router} />

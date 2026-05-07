@@ -9,8 +9,10 @@ interface AuthState {
     profile: ProfileSQL | null;
     loading: boolean;
     countryRank: number | null;
+    accessToken: string | null;
     setUser: (user: User | null) => void;
     fetchProfile: (userId: string) => Promise<void>;
+    setAccessToken: (token: string | null) => void;
     signOut: () => Promise<void>;
     fetchCountryRank: () => Promise<void>;
 }
@@ -20,9 +22,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     profile: null,
     loading: true,
     countryRank: null,
+    accessToken: null,
 
     setUser: (user) => {
         set({ user, loading: !user });
+    },
+
+    setAccessToken: (accessToken) => {
+        set({ accessToken });
     },
 
 
@@ -61,6 +68,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     signOut: async () => {
         await supabase.auth.signOut();
-        set({ user: null, profile: null });
+        set({ user: null, profile: null, accessToken: null });
     },
 }));
