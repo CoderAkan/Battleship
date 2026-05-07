@@ -11,10 +11,8 @@ export const canPlaceShip = (
         const curX = orientation === 'horizontal' ? x + i : x;
         const curY = orientation === 'vertical' ? y + i : y;
 
-        // 1. Check bounds
         if (curX < 0 || curX >= 10 || curY < 0 || curY >= 10) return false;
 
-        // 2. Check 3x3 area around each cell (No-Touching Rule)
         for (let dy = -1; dy <= 1; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
                 const checkX = curX + dx;

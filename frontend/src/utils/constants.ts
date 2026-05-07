@@ -14,9 +14,11 @@ export const FLEET_CONFIG: ShipConfig[] = [
     { type: 'Submarine', size: 1, count: 1 },
 ];
 
-// Helper to get a flat list for the placement phase
 export const SHIPS_TO_PLACE = FLEET_CONFIG.flatMap((ship) =>
-    Array(ship.count).fill({ type: ship.type, size: ship.size })
+    Array.from({ length: ship.count }, () => ({
+        type: ship.type,
+        size: ship.size
+    }))
 );
 
 export const BOARD_SIZE = 10;

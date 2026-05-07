@@ -9,12 +9,10 @@ interface GameStore {
     boards: { p1: Board; p2: Board };
     ships: { p1: Ship[]; p2: Ship[] };
     language: 'en' | 'ru';
-
-    // Actions
     toggleLanguage: () => void;
     setPhase: (phase: GamePhase) => void;
     placeShip: (player: 'p1' | 'p2', ship: Ship) => void;
-    fireShot: (targetPlayer: 'p1' | 'p2', x: number, y: number) => 'hit' | 'miss' | 'sunk';
+    fireShot: (attacker: 'p1' | 'p2', x: number, y: number) => 'hit' | 'miss' | 'sunk';
     switchTurn: () => void;
 }
 
@@ -28,7 +26,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     setPhase: (phase) => set({ phase }),
 
     placeShip: (player, ship) => {
-        // Deep copy the 2D array
         const currentBoard = get().boards[player];
         const newBoard = currentBoard.map(row => row.map(cell => ({ ...cell })));
 
@@ -42,8 +39,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }));
     },
 
-    fireShot: (target, x, y) => {
+    fireShot: (attacker, x, y) => {
         const { boards, ships } = get();
+        const target = attacker === 'p1' ? 'p2' : 'p1';
         const board = boards[target];
         const cell = board[y][x];
 
@@ -52,11 +50,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const isHit = cell.status === 'ship';
         let finalStatus: 'hit' | 'miss' | 'sunk' = isHit ? 'hit' : 'miss';
 
-        // 1. Deep copy the target's board
         const newBoard = board.map(row => row.map(c => ({ ...c })));
         newBoard[y][x].status = isHit ? 'hit' : 'miss';
 
-        // 2. Update ships and handle sinking
         const updatedShips = ships[target].map(ship => {
             if (ship.id === cell.shipId) {
                 const newHits = ship.hits + 1;
@@ -72,19 +68,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
             return ship;
         });
 
-        // 3. Update the state
         set((state) => ({
-            boards: {
-                ...state.boards,
-                [target]: newBoard
-            },
-            ships: {
-                ...state.ships,
-                [target]: updatedShips
-            }
+            boards: { ...state.boards, [target]: newBoard },
+            ships: { ...state.ships, [target]: updatedShips }
         }));
 
-        // 4. Win Condition Check
         if (updatedShips.every(s => s.isSunk)) {
             set({ phase: 'RESULT' });
         }

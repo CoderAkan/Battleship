@@ -13,9 +13,4 @@ const HomePage = () => {
     );
 };
 
-export default HomePage; // <--- MUST BE DEFAULT
-
-// const HomePage = () => {
-//     return <div className="text-white text-5xl p-20">IF YOU SEE THIS, ROUTER IS OK</div>;
-// };
-// export default HomePage;
+export default HomePage;

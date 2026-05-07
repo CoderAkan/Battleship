@@ -9,7 +9,6 @@ export const translations = {
         enemyWaters: "Enemy Waters",
         yourFleet: "Your Fleet",
         nextPlayer: "Next Player",
-        fireAgain: "Fire Again",
         victory: "VICTORY!",
         conquered: "has conquered the sea!",
         redeploy: "START AGAIN",
@@ -18,7 +17,14 @@ export const translations = {
         cells: "cells",
         errorTitle: "404 - LOST AT SEA",
         errorMessage: "Commander, we've drifted into uncharted waters. This page does not exist.",
-        returnHome: "RETURN TO BASE"
+        returnHome: "RETURN TO BASE",
+        invalidPlacement: "Invalid placement! Ships cannot touch.",
+        alreadyTargeted: "Choose another cell!",
+        fireAgain: "DIRECT HIT! FIRE AGAIN, COMMANDER!",
+        commanderFire: "SELECT TARGET COORDINATES",
+        missed: "SHOT MISSED. HAND OVER COMMAND.",
+        sunk: "ENEMY SHIP SUNK!",
+        hit: "HIT!"
     },
     ru: {
         title: "МОРСКОЙ БОЙ",
@@ -30,7 +36,6 @@ export const translations = {
         enemyWaters: "Вражеские воды",
         yourFleet: "Ваш флот",
         nextPlayer: "Следующий игрок",
-        fireAgain: "Огонь снова",
         victory: "ПОБЕДА!",
         conquered: "покорил море!",
         redeploy: "НОВАЯ ИГРА",
@@ -39,6 +44,13 @@ export const translations = {
         cells: "клеток",
         errorTitle: "404 - ПОТЕРЯН В МОРЕ",
         errorMessage: "Командир, мы зашли в неизведанные воды. Эта страница не существует.",
-        returnHome: "ВЕРНУТЬСЯ НА БАЗУ"
+        returnHome: "ВЕРНУТЬСЯ НА БАЗУ",
+        invalidPlacement: "Неверное расположение! Корабли не могут соприкасаться.",
+        alreadyTargeted: "Выберите другую клетку!",
+        fireAgain: "ПОПАДАНИЕ! ОГОНЬ СНОВА, КОМАНДИР!",
+        commanderFire: "ВЫБЕРИТЕ КООРДИНАТЫ ЦЕЛИ",
+        missed: "ПРОМАХ. ПЕРЕДАЙТЕ КОМАНДОВАНИЕ.",
+        sunk: "ВРАЖЕСКИЙ КОРАБЛЬ ПОТОПЛЕН!",
+        hit: "ПОПАДАНИЕ!"
     }
 };

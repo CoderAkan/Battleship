@@ -2,7 +2,7 @@ export type CellStatus = 'empty' | 'ship' | 'hit' | 'miss' | 'sunk';
 
 export interface Cell {
     status: CellStatus;
-    shipId?: string; // Links the cell to a specific ship object
+    shipId?: string;
 }
 
 export type Board = Cell[][];
@@ -16,5 +16,5 @@ export interface Ship {
     hits: number;
     isSunk: boolean;
     orientation: 'horizontal' | 'vertical';
-    coordinates: { x: number; y: number }[]; // Array of occupied cells
+    coordinates: { x: number; y: number }[];
 }

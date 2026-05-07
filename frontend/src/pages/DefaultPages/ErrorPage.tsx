@@ -9,7 +9,6 @@ export default function ErrorPage() {
     return (
         <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-950 text-white p-6 text-center relative overflow-hidden">
 
-            {/* Language Toggle */}
             <div className="absolute top-4 right-4">
                 <button
                     onClick={toggleLanguage}
@@ -21,17 +20,14 @@ export default function ErrorPage() {
             </div>
 
             <div className="max-w-3xl space-y-2">
-                {/* 404 Header - Now separate */}
                 <h1 className="text-7xl font-black text-red-600 tracking-tighter drop-shadow-[0_0_20px_rgba(220,38,38,0.3)] leading-none">
                     404
                 </h1>
 
-                {/* Translated Title - Centered below */}
                 <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight pb-4">
                     {language === 'en' ? 'LOST AT SEA' : 'ПОТЕРЯН В МОРЕ'}
                 </h2>
 
-                {/* Smaller detailed message */}
                 <p className="text-lg md:text-xl font-medium text-slate-400 max-w-md mx-auto">
                     {t.errorMessage}
                 </p>

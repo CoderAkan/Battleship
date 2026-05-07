@@ -1,4 +1,3 @@
-// utils/boardHelpers.ts
 import type { Board, Cell } from '../types/board';
 
 
