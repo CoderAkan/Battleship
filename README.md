@@ -19,12 +19,12 @@ A web version of the classic Battleship game. Play against an AI bot, against a 
 
 ## Tech Stack
 
-**Frontend:** React, TypeScript, Tailwind CSS, Zustand, React Router
-**Backend:** Python, FastAPI, WebSockets
-**Auth & DB:** Supabase (Postgres + auth + RLS)
-**Hosting:** Vercel (frontend), Fly.io (backend)
-**Frontend Link:** https://battleship-game-psi-liard.vercel.app/
-**Backend Link:** https://battleship-backend.onfly.dev/
+- **Frontend:** React, TypeScript, Tailwind CSS, Zustand, React Router
+- **Backend:** Python, FastAPI, WebSockets
+- **Auth & DB:** Supabase (Postgres + auth + RLS)
+- **Hosting:** Vercel (frontend), Fly.io (backend)
+- **Frontend Link:** https://battleship-game-psi-liard.vercel.app/
+- **Backend Link:** https://battleship-backend.onfly.dev/
 
 ## Project Structure
 
