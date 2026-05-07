@@ -237,16 +237,24 @@ export const SetupPage = () => {
             </div>
 
             {/* Controls — Rotate (only while placing) */}
-            {!allPlaced && (
-                <div className="shrink-0 p-2 sm:p-3 flex justify-center items-center gap-2 sm:gap-3">
+            <div className="shrink-0 p-2 sm:p-3 flex justify-center items-center gap-2 sm:gap-3">
+                {!allPlaced && (
                     <button
                         onClick={() => setOrientation(orientation === 'horizontal' ? 'vertical' : 'horizontal')}
                         className="px-5 py-2 sm:px-8 sm:py-3 bg-blue-600 hover:bg-blue-500 rounded-full font-black transition-all shadow-lg text-[11px] sm:text-sm active:scale-95 uppercase tracking-wider"
                     >
                         {t.rotate} {orientation === 'horizontal' ? t.vertical : t.horizontal}
                     </button>
-                </div>
-            )}
+                )}
+                {canUndo && (
+                    <button
+                        onClick={handleUndo}
+                        className="px-4 py-2 sm:px-5 sm:py-3 bg-slate-700 hover:bg-slate-600 rounded-full font-black transition-all text-[11px] sm:text-sm active:scale-95 uppercase tracking-wider"
+                    >
+                        ← {t.undo}
+                    </button>
+                )}
+            </div>
 
             {/* Grid + side undo */}
             <div className="flex-1 flex items-center justify-center px-3 pb-4 sm:pb-6">
@@ -254,18 +262,6 @@ export const SetupPage = () => {
                     className="relative aspect-square w-full"
                     style={{ maxWidth: 'min(100%, 60vh, 540px)' }}
                 >
-                    <button
-                        onClick={handleUndo}
-                        disabled={!canUndo}
-                        className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[calc(100%+0.5rem)] sm:-translate-x-[calc(100%+1rem)] group flex items-center gap-1.5 px-3 py-2 sm:px-5 sm:py-3 rounded-full font-black transition-all shadow-lg text-[10px] sm:text-sm uppercase tracking-wider z-10 ${canUndo
-                            ? 'bg-slate-700 hover:bg-slate-600 text-white active:scale-95 cursor-pointer'
-                            : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-60'
-                            }`}
-                        aria-label={t.undo}
-                    >
-                        <span className={`leading-none ${canUndo ? 'transition-transform group-hover:-translate-x-0.5' : ''}`}>←</span>
-                        <span>{t.undo}</span>
-                    </button>
                     <Grid
                         board={currentBoard}
                         onCellClick={!allPlaced ? handleCellClick : undefined}
