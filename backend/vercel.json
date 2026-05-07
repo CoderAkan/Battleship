@@ -1,18 +1,13 @@
 {
-    "version": 2,
-    "rewrites": [
-        {
-            "source": "/api/(.*)",
-            "destination": "/api/main.py"
+    "experimentalServices": {
+        "frontend": {
+            "entrypoint": "frontend",
+            "routePrefix": "/",
+            "framework": "vite"
         },
-        {
-            "source": "/(.*)",
-            "destination": "/"
-        }
-    ],
-    "functions": {
-        "api/*.py": {
-            "runtime": "vercel-python@0.0.6"
+        "backend": {
+            "entrypoint": "backend",
+            "routePrefix": "/_/backend"
         }
     }
 }
