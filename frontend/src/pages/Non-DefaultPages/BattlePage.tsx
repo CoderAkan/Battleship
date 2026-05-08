@@ -38,6 +38,8 @@ export const BattlePage = () => {
     const enemy = turn === 'p1' ? 'p2' : 'p1';
     const enemyBoard = boards[enemy];
 
+    const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+
     useEffect(() => {
         if (phase === 'BATTLE' && turn === 'p2' && mode === 'BOT' && !isTransitioning && !isMissed) {
             const controller = new AbortController();
@@ -48,7 +50,7 @@ export const BattlePage = () => {
                 await new Promise(res => setTimeout(res, 600));
 
                 try {
-                    const response = await fetch('http://localhost:8000/api/bot/move', {
+                    const response = await fetch(`${API_URL}/api/bot/move`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
