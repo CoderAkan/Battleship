@@ -67,9 +67,7 @@ class Room:
         return self.p2 if slot == "p1" else self.p1
 
     def add_player(self, player: PlayerState) -> PlayerSlot:
-        """
-        Place player into the next open slot. Raises if room is full.
-        """
+        """Place player into the next open slot. Raises if room is full."""
         if self.p1 is None:
             self.p1 = player
             return "p1"
@@ -109,13 +107,23 @@ class Room:
 
     # ─────────────────────── shooting ───────────────────────
 
-    def fire_shot(self, attacker_slot: PlayerSlot, x: int, y: int) -> Tuple[ShotResult, bool, Optional[List[Tuple[int, int]]]]:
+    def fire_shot(
+        self, attacker_slot: PlayerSlot, x: int, y: int
+    ) -> Tuple[
+        ShotResult,
+        bool,
+        Optional[List[Tuple[int, int]]],
+        Optional[List[Tuple[int, int]]],
+    ]:
         """
-        Process a shot. Returns (result, game_over, sunk_ship_cells).
+        Process a shot. Returns (result, game_over, sunk_cells, surrounding_cells).
 
-        sunk_ship_cells is None unless result == 'sunk', in which case it's
-        the list of (x, y) coordinates of the just-sunk ship — used by the
-        WS layer to reveal those cells on the attacker's enemy-board view.
+        - sunk_cells:        cells of the just-sunk ship, or None if no sink
+        - surrounding_cells: 1-cell border around a sunk ship, auto-revealed
+                             as misses since ships can't touch. None when no
+                             sink occurred.
+
+        Both are None for plain hits and misses.
         """
         if self.phase != "BATTLE":
             raise ValueError("Not in battle phase")
@@ -138,7 +146,7 @@ class Room:
         is_hit = (x, y) in defender.ship_cells
         if not is_hit:
             self.turn = "p2" if self.turn == "p1" else "p1"
-            return ("miss", False, None)
+            return ("miss", False, None, None)
 
         attacker.successful_hits += 1
 
@@ -155,7 +163,7 @@ class Room:
         if all_sunk:
             self.phase = "RESULT"
             self.winner = attacker_slot
-            return (result, True, sunk_cells)
+            return (result, True, sunk_cells, surrounding_cells)
 
         return (result, False, sunk_cells, surrounding_cells)
 
@@ -179,10 +187,14 @@ class Room:
         """
         Compute the 1-cell border around a sunk ship, excluding:
         - cells that are part of the ship itself
-        - cells that are out of bounds
-        - cells already shot (no point re-revealing)
-        - cells containing other ships (shouldn't happen given the no-touching
-            rule, but guarded against bad client input)
+        - cells out of bounds
+        - cells already shot (hits_taken)
+        - cells containing other ships (shouldn't happen given no-touching,
+          but guarded against bad client input)
+
+        Also marks them as taken in defender.hits_taken so they can't be
+        re-shot — keeps the server's state consistent with what the clients
+        will render after applying surrounding_cells.
         """
         sunk_set = set(sunk_cells)
         border: set[Tuple[int, int]] = set()
@@ -200,7 +212,6 @@ class Room:
                         continue
                     border.add((nx, ny))
 
-        # Mark them as taken so they can never be re-shot.
         defender.hits_taken.update(border)
         return list(border)
 
@@ -224,7 +235,6 @@ class Room:
 
         player.connected = False
 
-        # Disconnects in WAITING/PLACING just kill the room with no penalty.
         if self.phase != "BATTLE":
             return "cancelled"
 
@@ -232,7 +242,6 @@ class Room:
             self.phase = "RESULT"
             return "cancelled"
 
-        # Forfeit: opponent wins.
         self.phase = "RESULT"
         self.winner = "p2" if slot == "p1" else "p1"
         return "forfeit"
