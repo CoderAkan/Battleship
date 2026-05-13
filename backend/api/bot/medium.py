@@ -1,12 +1,13 @@
 """
-Medium bot: classic Hunt & Target.
+Medium bot: probability-based heatmap with hit-adjacency bonus.
 
-  - Hunt phase: random checkerboard cell. Since the smallest ship is size 2,
-    a checkerboard pattern guarantees at least one shot will land on every
-    ship without wasting shots.
-  - Target phase: when there are unresolved hits, fire at orthogonal
-    neighbors — preferring neighbors that line up with another hit (likely
-    on the ship's axis).
+For every remaining ship size, count the number of valid placements
+that would cover each cell. Cells covered by more potential ships are
+"hotter." When the bot has unresolved hits, add a large bonus to their
+orthogonal neighbors so they get chased — but don't lock direction.
+
+Used to be the Hard bot's logic. Hard now layers directional locking
+on top of this, see hard.py.
 """
 
 import random
@@ -17,67 +18,57 @@ from .helpers import (
     CELL_HIT,
     CELL_UNKNOWN,
     ORTHOGONAL,
-    get_unresolved_hits,
-    random_unknown,
+    can_place_ship,
+    get_unknown_cells,
 )
 
+HIT_ADJACENCY_BONUS = 100
 
-def _targeted_neighbors(board: List[List[int]]) -> List[Tuple[int, int]]:
-    """
-    Find neighbor cells of any unresolved hit. Returns aligned cells (on the
-    ship's likely axis) if any exist, otherwise plain adjacent cells.
-    """
-    hits = get_unresolved_hits(board)
-    if not hits:
-        return []
 
-    seen = set()
-    aligned: List[Tuple[int, int]] = []
-    adjacent: List[Tuple[int, int]] = []
+def _build_heatmap(
+    board: List[List[int]],
+    remaining_ships: List[int],
+) -> List[List[int]]:
+    heatmap = [[0 for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
 
-    for (r, c) in hits:
-        for dr, dc in ORTHOGONAL:
-            nr, nc = r + dr, c + dc
-            if not (0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE):
+    # Hit-adjacency bonus: chase known hits aggressively.
+    for r in range(BOARD_SIZE):
+        for c in range(BOARD_SIZE):
+            if board[r][c] != CELL_HIT:
                 continue
-            if board[nr][nc] != CELL_UNKNOWN:
-                continue
-            if (nr, nc) in seen:
-                continue
-            seen.add((nr, nc))
+            for dr, dc in ORTHOGONAL:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE and board[nr][nc] == CELL_UNKNOWN:
+                    heatmap[nr][nc] += HIT_ADJACENCY_BONUS
 
-            # Cell is "aligned" if shooting it extends a known hit pair.
-            pr, pc = r - dr, c - dc
-            if 0 <= pr < BOARD_SIZE and 0 <= pc < BOARD_SIZE and board[pr][pc] == CELL_HIT:
-                aligned.append((nr, nc))
-            else:
-                adjacent.append((nr, nc))
+    # Probability heatmap: count valid placements covering each cell.
+    for ship_size in remaining_ships:
+        for r in range(BOARD_SIZE):
+            for c in range(BOARD_SIZE):
+                if can_place_ship(board, ship_size, c, r, "horizontal"):
+                    for i in range(ship_size):
+                        if c + i < BOARD_SIZE and board[r][c + i] == CELL_UNKNOWN:
+                            heatmap[r][c + i] += 1
+                if can_place_ship(board, ship_size, c, r, "vertical"):
+                    for i in range(ship_size):
+                        if r + i < BOARD_SIZE and board[r + i][c] == CELL_UNKNOWN:
+                            heatmap[r + i][c] += 1
 
-    return aligned if aligned else adjacent
+    return heatmap
 
 
-def _checkerboard_cell(board: List[List[int]]) -> Tuple[int, int] | None:
-    """Pick a random untouched cell on the (r+c) % 2 == 0 parity."""
-    candidates = [
-        (r, c)
-        for r in range(BOARD_SIZE)
-        for c in range(BOARD_SIZE)
-        if board[r][c] == CELL_UNKNOWN and (r + c) % 2 == 0
-    ]
+def medium_move(board: List[List[int]], remaining_ships: List[int]) -> Tuple[int, int]:
+    candidates = get_unknown_cells(board)
     if not candidates:
-        return None
-    return random.choice(candidates)
+        return (0, 0)
 
+    heatmap = _build_heatmap(board, remaining_ships)
 
-def medium_move(board: List[List[int]]) -> Tuple[int, int]:
-    targets = _targeted_neighbors(board)
-    if targets:
-        r, c = random.choice(targets)
-        return (c, r)
+    max_heat = -1
+    best_move = random.choice(candidates)
+    for r, c in candidates:
+        if heatmap[r][c] > max_heat:
+            max_heat = heatmap[r][c]
+            best_move = (r, c)
 
-    checker = _checkerboard_cell(board)
-    if checker is not None:
-        r, c = checker
-        return (c, r)
-
-    return random_unknown(board)
+    return (best_move[1], best_move[0])
