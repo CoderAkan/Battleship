@@ -43,22 +43,43 @@ export const BattlePage = () => {
     useEffect(() => {
         if (phase === 'BATTLE' && turn === 'p2' && mode === 'BOT' && !isTransitioning && !isMissed) {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2000);
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
 
             const triggerBot = async () => {
                 setIsBotThinking(true);
                 await new Promise(res => setTimeout(res, 600));
+
+                // ─── DIAGNOSTIC: build the board the bot will see ───
+                const encodedBoard = boards.p1.map(row => row.map(cell => {
+                    if (cell.status === 'sunk') return 3;
+                    if (cell.status === 'hit') return 2;
+                    if (cell.status === 'miss') return 1;
+                    return 0;
+                }));
+
+                // Collect hit/sunk/miss coordinates for human-readable logging.
+                const hits: { x: number; y: number }[] = [];
+                const sunks: { x: number; y: number }[] = [];
+                const misses: { x: number; y: number }[] = [];
+                encodedBoard.forEach((row, y) => row.forEach((val, x) => {
+                    if (val === 2) hits.push({ x, y });
+                    else if (val === 3) sunks.push({ x, y });
+                    else if (val === 1) misses.push({ x, y });
+                }));
+
+                // console.group(`[BOT] ${botDifficulty.toUpperCase()} turn`);
+                // console.log('Sending board state:');
+                // console.log('  hits (unresolved):', hits);
+                // console.log('  sunk cells:', sunks);
+                // console.log('  misses:', misses);
+                // console.log('  encoded board:', encodedBoard);
 
                 try {
                     const response = await fetch(`${API_URL}/api/bot/move`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            board: boards.p1.map(row => row.map(cell => {
-                                if (cell.status === 'hit' || cell.status === 'sunk') return 2;
-                                if (cell.status === 'miss') return 1;
-                                return 0;
-                            })),
+                            board: encodedBoard,
                             remaining_ships: [5, 4, 3, 3, 2],
                             difficulty: botDifficulty,
                         }),
@@ -70,9 +91,14 @@ export const BattlePage = () => {
                     const move = await response.json();
                     clearTimeout(timeoutId);
                     setIsBotThinking(false);
+
+                    // console.log('Bot returned shot:', move);
+                    // console.groupEnd();
+
                     handleCellClick(move.x, move.y);
-                } catch {
-                    console.warn('Bot logic failed or timed out. Firing random shot.');
+                } catch (err) {
+                    // console.warn('Bot logic failed or timed out. Firing random shot.', err);
+                    // console.groupEnd();
                     clearTimeout(timeoutId);
                     setIsBotThinking(false);
 
@@ -87,6 +113,7 @@ export const BattlePage = () => {
 
                     if (validMoves.length > 0) {
                         const randomChoice = validMoves[Math.floor(Math.random() * validMoves.length)];
+                        // console.warn('[BOT] FALLBACK random shot:', randomChoice);
                         handleCellClick(randomChoice.x, randomChoice.y);
                     }
                 }
