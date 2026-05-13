@@ -1,18 +1,34 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useGameStore } from '../../store/useGameStore';
 import { translations } from '../../utils/translations';
 import { supabase } from '../../lib/supabase';
+import { CountryPicker } from '../../components/CountryPicker';
+import { CountryLeaderboardModal } from '../../components/CountryLeaderboardModal';
+import { getCountryByCode } from '../../utils/countries';
 import type { MatchRecord } from '../../types/user';
 
 export const ProfilePage = () => {
-    const { user, profile, countryRank, fetchCountryRank } = useAuthStore();
+    const { user, profile, countryRank, fetchCountryRank, fetchProfile } = useAuthStore();
     const { language } = useGameStore();
     const t = translations[language];
 
     const [matches, setMatches] = useState<MatchRecord[]>([]);
     const [matchesLoading, setMatchesLoading] = useState(false);
+
+    // Inline edit state for country.
+    const [editingCountry, setEditingCountry] = useState(false);
+    const [savingCountry, setSavingCountry] = useState(false);
+
+    // Country leaderboard modal.
+    const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+
+    // Refresh profile every time the page mounts, so stats are current.
+    useEffect(() => {
+        if (user) fetchProfile(user.id);
+    }, [user, fetchProfile]);
 
     useEffect(() => {
         if (profile) fetchCountryRank();
@@ -48,6 +64,38 @@ export const ProfilePage = () => {
         };
     }, [user]);
 
+    /**
+     * Save the new country to Supabase. We re-fetch the profile afterwards
+     * so the displayed flag + name + country rank all update together. If
+     * the update fails we toast an error and keep the picker open so the
+     * user can retry without losing their selection.
+     */
+    const handleCountryChange = async (newCode: string) => {
+        if (!user || !profile) return;
+        if (newCode === profile.country) {
+            setEditingCountry(false);
+            return;
+        }
+
+        setSavingCountry(true);
+        const { error } = await supabase
+            .from('profiles')
+            .update({ country: newCode })
+            .eq('id', user.id);
+
+        if (error) {
+            console.error('Failed to update country:', error.message);
+            toast.error(language === 'ru' ? 'Не удалось сохранить страну' : 'Failed to save country');
+            setSavingCountry(false);
+            return;
+        }
+
+        await fetchProfile(user.id);
+        toast.success(language === 'ru' ? 'Страна обновлена' : 'Country updated');
+        setEditingCountry(false);
+        setSavingCountry(false);
+    };
+
     if (!user || !profile) {
         return (
             <div className="min-h-[calc(100dvh-4rem)] bg-slate-950 flex flex-col items-center justify-center p-6 gap-6">
@@ -73,6 +121,10 @@ export const ProfilePage = () => {
     const successfulHits = profile.successful_hits ?? 0;
     const hitRate = totalShots > 0 ? ((successfulHits / totalShots) * 100).toFixed(1) : '0.0';
 
+    // Fall back to KZ defensively even though the DB now enforces NOT NULL.
+    const currentCountryCode = profile.country ?? 'KZ';
+    const currentCountry = getCountryByCode(currentCountryCode);
+
     const formatDate = (iso: string) => {
         const d = new Date(iso);
         return d.toLocaleDateString(language === 'ru' ? 'ru-RU' : 'en-US', {
@@ -94,20 +146,61 @@ export const ProfilePage = () => {
                 </div>
 
                 {/* Identity card */}
-                <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 sm:p-8 mb-6 flex flex-col sm:flex-row items-center gap-6">
+                <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 sm:p-8 mb-6 flex flex-col sm:flex-row items-center sm:items-start gap-6">
                     <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-blue-600 flex items-center justify-center text-4xl sm:text-5xl font-bold text-white shrink-0">
                         {profile.username.charAt(0).toUpperCase()}
                     </div>
-                    <div className="text-center sm:text-left">
+                    <div className="text-center sm:text-left w-full">
                         <h2 className="text-3xl sm:text-4xl font-bold text-white">
                             {profile.username}
                         </h2>
                         <p className="text-slate-400 text-sm mt-1">{user.email}</p>
-                        {profile.country && (
-                            <p className="text-slate-300 text-sm mt-2">
-                                {language === 'en' ? 'Country' : 'Страна'}: {profile.country}
+
+                        {/* Country row — inline editable */}
+                        <div className="mt-3">
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                                {language === 'en' ? 'Country' : 'Страна'}
                             </p>
-                        )}
+                            {editingCountry ? (
+                                <div className="flex items-center gap-2 max-w-sm">
+                                    <div className="flex-1">
+                                        <CountryPicker
+                                            value={currentCountryCode}
+                                            onChange={handleCountryChange}
+                                            disabled={savingCountry}
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={() => setEditingCountry(false)}
+                                        disabled={savingCountry}
+                                        className="text-slate-400 hover:text-white text-sm px-2 py-1 transition-colors disabled:opacity-50"
+                                        aria-label={language === 'en' ? 'Cancel' : 'Отмена'}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-white text-base flex items-center gap-2">
+                                        {currentCountry ? (
+                                            <>
+                                                <span className="text-xl leading-none">{currentCountry.flag}</span>
+                                                <span>{currentCountry.name}</span>
+                                            </>
+                                        ) : (
+                                            <span className="text-slate-500">—</span>
+                                        )}
+                                    </span>
+                                    <button
+                                        onClick={() => setEditingCountry(true)}
+                                        className="text-slate-400 hover:text-blue-400 text-sm transition-colors"
+                                        aria-label={language === 'en' ? 'Edit country' : 'Изменить страну'}
+                                    >
+                                        ✏️
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -120,6 +213,7 @@ export const ProfilePage = () => {
                     <StatCard
                         label={language === 'en' ? 'Country Rank' : 'Ранг в стране'}
                         value={countryRank !== null ? `#${countryRank}` : '—'}
+                        onClick={() => setLeaderboardOpen(true)}
                     />
                     <StatCard
                         label={language === 'en' ? 'Total Matches' : 'Всего матчей'}
@@ -226,6 +320,13 @@ export const ProfilePage = () => {
                     )}
                 </div>
             </div>
+
+            <CountryLeaderboardModal
+                isOpen={leaderboardOpen}
+                onClose={() => setLeaderboardOpen(false)}
+                countryCode={currentCountryCode}
+                currentUserId={user.id}
+            />
         </div>
     );
 };
@@ -233,11 +334,25 @@ export const ProfilePage = () => {
 interface StatCardProps {
     label: string;
     value: string | number;
+    /** Optional click handler. When provided, the card becomes interactive
+     *  with a hover state and a pointer cursor. */
+    onClick?: () => void;
 }
 
-const StatCard = ({ label, value }: StatCardProps) => (
-    <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 sm:p-5 hover:border-slate-500 transition-colors">
-        <p className="text-xs text-slate-400 mb-2">{label}</p>
-        <p className="text-2xl sm:text-3xl font-bold text-white">{value}</p>
-    </div>
-);
+const StatCard = ({ label, value, onClick }: StatCardProps) => {
+    const interactive = !!onClick;
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={!interactive}
+            className={`w-full text-left bg-slate-900 border border-slate-700 rounded-lg p-4 sm:p-5 transition-colors ${interactive
+                ? 'hover:border-blue-500 hover:bg-slate-800/60 cursor-pointer'
+                : 'hover:border-slate-500 cursor-default disabled:opacity-100'
+                }`}
+        >
+            <p className="text-xs text-slate-400 mb-2">{label}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-white">{value}</p>
+        </button>
+    );
+};

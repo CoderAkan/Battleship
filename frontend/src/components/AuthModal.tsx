@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGameStore } from '../store/useGameStore';
 import { toast } from 'react-toastify';
+import { CountryPicker } from './CountryPicker';
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -14,6 +15,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [username, setUsername] = useState('');
+    const [country, setCountry] = useState<string>('KZ');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +34,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 const { data, error: signUpError } = await supabase.auth.signUp({
                     email,
                     password,
-                    options: { data: { username: username, country: 'KZ' } },
+                    options: { data: { username: username, country } },
                 });
                 if (signUpError) throw signUpError;
 
@@ -78,12 +80,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
                 <form onSubmit={handleAuth} className="space-y-4">
                     {isSignUp && (
-                        <input
-                            type="text" required
-                            className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white outline-none focus:border-blue-500 transition-all"
-                            placeholder={language === 'ru' ? 'Имя пользователя' : 'Username'}
-                            value={username} onChange={(e) => setUsername(e.target.value)}
-                        />
+                        <>
+                            <input
+                                type="text" required
+                                className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white outline-none focus:border-blue-500 transition-all"
+                                placeholder={language === 'ru' ? 'Имя пользователя' : 'Username'}
+                                value={username} onChange={(e) => setUsername(e.target.value)}
+                            />
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                                    {language === 'ru' ? 'Страна' : 'Country'}
+                                </label>
+                                <CountryPicker
+                                    value={country}
+                                    onChange={setCountry}
+                                />
+                            </div>
+                        </>
                     )}
 
                     <input
