@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { translations } from '../../utils/translations';
 import { AuthModal } from '../../components/AuthModal';
+import { Footer } from '../../components/Footer';
 
 const Layout = () => {
     const { language, toggleLanguage, phase } = useGameStore();
@@ -62,6 +63,8 @@ const Layout = () => {
             <main className="flex-1 relative">
                 <Outlet />
             </main>
+
+            <Footer />
 
             <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
         </div>
