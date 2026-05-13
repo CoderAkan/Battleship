@@ -101,6 +101,7 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => {
         y: number,
         result: ShotResult,
         sunkCells?: { x: number; y: number }[],
+        surroundingCells?: { x: number; y: number }[],
     ) => {
         const youAre = get().youAre;
         if (!youAre) return;
@@ -136,6 +137,13 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => {
                         };
                     });
                 }
+            }
+            if (surroundingCells) {
+                surroundingCells.forEach((c) => {
+                    if (newBoard[c.y][c.x].status === 'empty') {
+                        newBoard[c.y][c.x] = { status: 'miss' };
+                    }
+                });
             }
         }
 
@@ -181,7 +189,7 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => {
                 break;
 
             case 'shot_result': {
-                applyShot(msg.attacker, msg.x, msg.y, msg.result, msg.sunk_cells);
+                applyShot(msg.attacker, msg.x, msg.y, msg.result, msg.sunk_cells, msg.surrounding_cells);
                 const youAre = get().youAre;
                 if (msg.attacker === youAre && msg.result === 'miss') {
                     set({ isMyTurn: false });

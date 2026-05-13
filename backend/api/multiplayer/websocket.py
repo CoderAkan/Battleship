@@ -124,7 +124,7 @@ async def handle_fire_shot(
     room: Room, slot: PlayerSlot, x: int, y: int, ws: WebSocket
 ) -> None:
     try:
-        result, game_over, sunk_cells = room.fire_shot(slot, x, y)
+        result, game_over, sunk_cells, surrounding_cells = room.fire_shot(slot, x, y)
     except ValueError as e:
         await send_error(ws, str(e))
         return
@@ -138,6 +138,9 @@ async def handle_fire_shot(
     # Only present on sunk events — keeps normal hits/misses small.
     if sunk_cells:
         payload["sunk_cells"] = [{"x": cx, "y": cy} for cx, cy in sunk_cells]
+    if surrounding_cells:
+        payload["surrounding_cells"] = [{"x": cx, "y": cy} for cx, cy in surrounding_cells]
+
 
     await broadcast(room, payload)
 

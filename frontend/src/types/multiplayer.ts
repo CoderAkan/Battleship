@@ -89,6 +89,7 @@ export interface ShotResultEvent {
     y: number;
     result: ShotResult;
     sunk_cells?: { x: number; y: number }[];
+    surrounding_cells?: { x: number; y: number }[];
 }
 
 export interface GameOverEvent {

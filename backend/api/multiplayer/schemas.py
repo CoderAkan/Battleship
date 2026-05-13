@@ -63,6 +63,9 @@ class ShotResultMsg(BaseModel):
     x: int
     y: int
     result: Literal["hit", "miss", "sunk"]
+    sunk_cells: Optional[List[dict]] = None
+    surrounding_cells: Optional[List[dict]] = None
+
 
 
 class GameOverMsg(BaseModel):

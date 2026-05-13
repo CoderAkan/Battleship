@@ -145,8 +145,11 @@ class Room:
         sunk_ship = self._find_sunk_ship(defender, x, y)
         result: ShotResult = "sunk" if sunk_ship else "hit"
         sunk_cells: Optional[List[Tuple[int, int]]] = None
+        surrounding_cells: Optional[List[Tuple[int, int]]] = None
+
         if sunk_ship:
             sunk_cells = [(c["x"], c["y"]) for c in sunk_ship["coordinates"]]
+            surrounding_cells = self._surrounding_water(defender, sunk_cells)
 
         all_sunk = defender.ship_cells.issubset(defender.hits_taken)
         if all_sunk:
@@ -154,7 +157,7 @@ class Room:
             self.winner = attacker_slot
             return (result, True, sunk_cells)
 
-        return (result, False, sunk_cells)
+        return (result, False, sunk_cells, surrounding_cells)
 
     def _find_sunk_ship(
         self, defender: PlayerState, x: int, y: int
@@ -167,6 +170,39 @@ class Room:
             if ship_cells.issubset(defender.hits_taken):
                 return ship
         return None
+
+    def _surrounding_water(
+        self,
+        defender: PlayerState,
+        sunk_cells: List[Tuple[int, int]],
+    ) -> List[Tuple[int, int]]:
+        """
+        Compute the 1-cell border around a sunk ship, excluding:
+        - cells that are part of the ship itself
+        - cells that are out of bounds
+        - cells already shot (no point re-revealing)
+        - cells containing other ships (shouldn't happen given the no-touching
+            rule, but guarded against bad client input)
+        """
+        sunk_set = set(sunk_cells)
+        border: set[Tuple[int, int]] = set()
+        for sx, sy in sunk_cells:
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    nx, ny = sx + dx, sy + dy
+                    if not (0 <= nx < 10 and 0 <= ny < 10):
+                        continue
+                    if (nx, ny) in sunk_set:
+                        continue
+                    if (nx, ny) in defender.hits_taken:
+                        continue
+                    if (nx, ny) in defender.ship_cells:
+                        continue
+                    border.add((nx, ny))
+
+        # Mark them as taken so they can never be re-shot.
+        defender.hits_taken.update(border)
+        return list(border)
 
     # ─────────────────────── disconnect handling ───────────────────────
 

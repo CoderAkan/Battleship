@@ -98,6 +98,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
                     ship.coordinates.forEach(coord => {
                         newBoard[coord.y][coord.x].status = 'sunk';
                     });
+
+                    ship.coordinates.forEach(({ x: sx, y: sy }) => {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                const nx = sx + dx;
+                                const ny = sy + dy;
+                                if (nx < 0 || nx >= 10 || ny < 0 || ny >= 10) continue;
+                                if (newBoard[ny][nx].status === 'empty') {
+                                    newBoard[ny][nx] = { status: 'miss' };
+                                }
+                            }
+                        }
+                    });
                 }
                 return { ...ship, hits: newHits, isSunk };
             }
