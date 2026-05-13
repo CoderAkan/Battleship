@@ -222,6 +222,9 @@ export const useMultiplayerStore = create<MultiplayerState>((set, get) => {
 
             case 'error':
                 set({ lastError: msg.message });
+                if (msg.message.toLowerCase().includes('not your turn')) {
+                    set({ isMyTurn: false });
+                }
                 break;
         }
     };
