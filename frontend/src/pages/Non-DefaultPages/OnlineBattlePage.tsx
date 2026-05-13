@@ -62,6 +62,7 @@ export const OnlineBattlePage = () => {
 
     // Handle a click on the enemy grid.
     const handleCellClick = (x: number, y: number) => {
+        console.log('[CLICK]', { x, y, isMyTurn, cellStatus: enemyBoard[y][x].status });
         if (!isMyTurn) return;
         const cell = enemyBoard[y][x];
         if (cell.status !== 'empty') return; // already shot
@@ -179,8 +180,8 @@ export const OnlineBattlePage = () => {
                     </p>
                 )}
                 <div className={`min-h-9 sm:min-h-12 flex items-center justify-center px-4 sm:px-6 py-1.5 rounded border-2 transition-all ${isMyTurn
-                        ? 'border-green-700 bg-green-950/30'
-                        : 'border-blue-900 bg-blue-950/30'
+                    ? 'border-green-700 bg-green-950/30'
+                    : 'border-blue-900 bg-blue-950/30'
                     } ${flash ? 'scale-105 brightness-125' : ''}`}>
                     <p className={`font-mono font-bold text-[10px] sm:text-sm lg:text-base uppercase tracking-widest text-center ${isMyTurn ? 'text-green-400' : 'text-blue-400'
                         }`}>
